@@ -24,3 +24,6 @@ int sfs_read(int fd, void *buf, int n);
 int sfs_append(int fd, void *buf, int n);
 
 int sfs_delete(char *filename);
+
+// TMP
+void sfs_print();

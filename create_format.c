@@ -22,13 +22,16 @@ int main(int argc, char **argv)
     printf("started\n");
 
     ret = create_format_vdisk(vdiskname, m);
-    int res = sfs_mount(vdiskname);
+    sfs_mount(vdiskname);
     printf("creating files\n");
-    sfs_create("file1.bin");
-    sfs_create("file2.bin");
-    sfs_create("file10.bin");
-    sfs_create("file20.bin");
-    sfs_create("file2.bin");
+    sfs_create("file1.txt");
+    sfs_create("file2.txt");
+    sfs_create("file10.txt");
+    sfs_create("file20.txt");
+    sfs_create("file2.txt");
+    sfs_print();
+    // sfs_open("file1.txt", 1);
+    // sfs_open("file22.txt", 1);
     if (ret != 0)
     {
         printf("there was an error in creating the disk\n");
