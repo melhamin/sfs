@@ -1,0 +1,6 @@
+app
+create_format
+libsimplefs.a
+*.o
+vdisk
+file-implementation.pdf
