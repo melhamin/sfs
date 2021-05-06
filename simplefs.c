@@ -118,7 +118,6 @@ int create_format_vdisk(char *vdiskname, unsigned int m)
 
     // Format the dicrectory entry blocks (5, 6, 7, 8)
     lseek(fd, ROOT_DIR_OFFSET, SEEK_SET);
-
     for (int i = 0; i < MAX_FILE_COUNT; i++)
     {
         d_entry dir_entry;
@@ -127,9 +126,8 @@ int create_format_vdisk(char *vdiskname, unsigned int m)
     }
 
     // Format FCB blocks (9, 10, 11, 12)
-    off_t fcb_offset = BLOCKSIZE * 9;
     lseek(fd, FCB_OFFSET, SEEK_SET);
-    for (int i = 0; i < MAX_FILE_COUNT; i++)
+    for (int i = 0; i < FCB_COUNT; i++)
     {
         fcb_t fcb;
         fcb.is_used = 0;
@@ -145,26 +143,6 @@ int sfs_mount(char *vdiskname)
     // way make it ready to be used for other operations.
     // vdisk_fd is global; hence other function can use it.
     vdisk_fd = open(vdiskname, O_RDWR);
-    lseek(vdisk_fd, FCB_OFFSET, SEEK_SET);
-
-    void *dir = malloc(DIR_SIZE);
-    read(vdisk_fd, dir, DIR_SIZE);
-    d_entry *d = (d_entry *)dir;
-    printf("is used ===> %d\n", d->is_used);
-    printf("is used ===> %s\n", d->filename);
-
-    read(vdisk_fd, dir, DIR_SIZE);
-    d = (d_entry *)dir;
-    printf("is used ===> %d\n", d->is_used);
-    printf("is used ===> %s\n", d->filename);
-
-    // for (int i = 0; i < 128; i++)
-    // {
-    //     read(vdisk_fd, dir, )
-    // }
-
-    // printf("val1 ===> %d\n", fcb->is_used);
-    // printf("val2 ===> %d\n", fcb->index_node[1]);
     return (0);
 }
 
@@ -182,65 +160,58 @@ int sfs_create(char *filename)
     lseek(vdisk_fd, ROOT_DIR_OFFSET, SEEK_SET);
     // Check if the same file already exists
     d_entry *curr_entry = malloc(DIR_SIZE);
-    d_entry *empty_entry = NULL;
+    size_t empty_blk = -1;
     for (size_t i = 0; i < MAX_FILE_COUNT; i++)
     {
         read(vdisk_fd, curr_entry, DIR_SIZE);
         if (curr_entry->is_used)
         {
-            printf("[USED] -> Name: %s, entry: %ld\n", curr_entry->filename, i);
+            printf("[USED] -> Name: %s, entry: %ld, fcb_index: %d\n", curr_entry->filename, i, curr_entry->fcb_index);
             if (strncmp(curr_entry->filename, filename, sizeof(filename)) == 0)
             {
                 printf("A file with name [%s] already exists!\n", filename);
                 return -1;
             }
         }
-    }
-
-    // Find an empty directory
-    lseek(vdisk_fd, ROOT_DIR_OFFSET, SEEK_SET);
-    int found = 0;
-    size_t dir_block;
-    for (dir_block = 0; dir_block < MAX_FILE_COUNT; dir_block++)
-    {
-        read(vdisk_fd, curr_entry, DIR_SIZE);
-        if (!curr_entry->is_used)
+        else
         {
-            printf("[EMPTY FOUND] -> entry: %ld, offset: %ld, \n", dir_block, (dir_block * DIR_SIZE) + ROOT_DIR_OFFSET);
-            found = 1;
-            break;
+            if (empty_blk == -1)
+                empty_blk = i;
         }
     }
 
     // If an empty block is found, find an empty FCB block
-    if (found)
+    if (empty_blk != -1)
     {
         curr_entry->is_used = 1;
         strncpy(curr_entry->filename, filename, sizeof(curr_entry->filename));
-        curr_entry->fcb_index = -1;
-        lseek(vdisk_fd, ROOT_DIR_OFFSET + (dir_block * DIR_SIZE), SEEK_SET);
-        write(vdisk_fd, curr_entry, DIR_SIZE);
-        printf("[WRITE TO] entry: %ld, offset: %ld, name: %s\n", dir_block, (ROOT_DIR_OFFSET + (dir_block * DIR_SIZE)), filename);
 
         // Find an available FCB
-        // lseek(vdisk_fd, FCB_OFFSET, SEEK_SET);
-        // fcb_t *fcb = malloc(sizeof(fcb_t));
-        // size_t fcb_block;
-        // for (fcb_block = 0; fcb_block < FCB_COUNT; fcb_block++)
-        // {
-        //     read(vdisk_fd, fcb, sizeof(FCB_SIZE));
-        //     if (!fcb->is_used)
-        //         break;
-        // }
+        lseek(vdisk_fd, FCB_OFFSET, SEEK_SET);
+        fcb_t *fcb = malloc(FCB_SIZE);
+        size_t empty_fcb;
+        for (empty_fcb = 0; empty_fcb < FCB_COUNT; empty_fcb++)
+        {
+            read(vdisk_fd, fcb, FCB_SIZE);
+            printf("fcb is used ---------> %d\n", fcb->is_used);
+            if (!fcb->is_used)
+                break;
+        }
 
-        // fcb->is_used = 1;
-        // fcb->index_node = -1;
-        // curr_entry->fcb_index = fcb_block;
+        fcb->is_used = 1;
+        curr_entry->fcb_index = empty_fcb;
 
-        // lseek(vdisk_fd, ROOT_DIR_OFFSET, SEEK_SET);
-        // write(dir_offset * D_ENTRY_SIZE, entry, D_ENTRY_SIZE);
-        // lseek(vdisk_fd, FCB_OFFSET, SEEK_SET);
-        // write(fcb_block * FCB_SIZE, fcb, FCB_SIZE);
+        // Write new directory back to the disk
+        off_t dir_to_write_off = ROOT_DIR_OFFSET + (empty_blk * DIR_SIZE);
+        lseek(vdisk_fd, dir_to_write_off, SEEK_SET);
+        write(vdisk_fd, curr_entry, DIR_SIZE);
+
+        off_t fcb_to_write_off = FCB_OFFSET + (empty_fcb * FCB_SIZE);
+        lseek(vdisk_fd, fcb_to_write_off, SEEK_SET);
+        write(vdisk_fd, fcb, FCB_SIZE);
+        //
+        printf("[WRITE TO] dir_entry: %ld, dir_offset: %ld, fcb_blk: %d, fcb_offset: %ld, name: %s\n", empty_blk, dir_to_write_off, curr_entry->fcb_index, fcb_to_write_off, filename);
+        free(fcb);
     }
 
     printf("---------------------------- DONE -------------------------------\n");
