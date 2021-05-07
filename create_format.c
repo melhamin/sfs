@@ -30,8 +30,11 @@ int main(int argc, char **argv)
     sfs_create("file20.txt");
     sfs_create("file2.txt");
     sfs_print();
-    // sfs_open("file1.txt", 1);
-    // sfs_open("file22.txt", 1);
+    int fd = sfs_open("file20.txt", 1);
+    int fd2 = sfs_open("file2.txt", 1);
+    char buff[] = "hello";
+    sfs_append(fd, buff, sizeof("hello"));
+    sfs_append(fd2, buff, sizeof("hello"));
     if (ret != 0)
     {
         printf("there was an error in creating the disk\n");

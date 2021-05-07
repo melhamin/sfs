@@ -35,6 +35,7 @@ typedef struct d_entry
     int is_used;
     char filename[FILENAME_SIZE];
     int fcb_index;
+    size_t size;
 } d_entry;
 
 typedef struct fcb
@@ -42,11 +43,6 @@ typedef struct fcb
     int is_used;
     int index_node;
 } fcb_t;
-
-typedef struct open_file
-{
-    int index;
-} open_file;
 
 // Global Variables =======================================
 int vdisk_fd; // Global virtual disk file descriptor. Global within the library.
@@ -90,6 +86,10 @@ int write_block(void *block, int k)
         return (-1);
     }
     return 0;
+}
+
+int find_empty_op_blk()
+{
 }
 
 /**********************************************************************
@@ -205,6 +205,8 @@ int sfs_create(char *filename)
 
         fcb->is_used = 1;
         fcb->index_node = -1;
+
+        curr_entry->size = 0;
         curr_entry->fcb_index = empty_fcb;
 
         // Write new directory back to the disk
@@ -249,26 +251,26 @@ int sfs_open(char *file, int mode)
     {
         lseek(vdisk_fd, OPEN_TABLE_OFFSET, SEEK_SET);
         int lenth = BLOCKSIZE / sizeof(int);
-        int open_file_index = -1;
-        int *curr = malloc(sizeof(int));
+        int empty_index = -1;
+        int curr;
         for (int i = 0; i < lenth; i++)
         {
-            read(vdisk_fd, curr, sizeof(int));
+            read(vdisk_fd, &curr, sizeof(int));
             //
-            if (*curr == 0)
+            if (curr == 0)
             {
-                open_file_index = i;
+                empty_index = i;
                 break;
             }
         }
 
         // An empty entry in open table found
-        if (open_file_index != -1)
+        if (empty_index != -1)
         {
-            lseek(vdisk_fd, OPEN_TABLE_OFFSET + (open_file_index * sizeof(int)), SEEK_SET);
-            write(vdisk_fd, &open_file_index, sizeof(int));
-            printf("[FOUND] Found an empty open table entry at %d\n", open_file_index);
-            return open_file_index;
+            lseek(vdisk_fd, OPEN_TABLE_OFFSET + (empty_index * sizeof(int)), SEEK_SET);
+            write(vdisk_fd, &file_index, sizeof(int));
+            printf("[FOUND] Found an empty open table entry at %d, wrote fd: %ld\n", empty_index, file_index);
+            return file_index;
         }
         else
         {
@@ -282,7 +284,7 @@ int sfs_open(char *file, int mode)
         return -1;
     }
 
-    return (0);
+    return -1;
 }
 
 int sfs_close(int fd)
@@ -302,6 +304,63 @@ int sfs_read(int fd, void *buf, int n)
 
 int sfs_append(int fd, void *buf, int n)
 {
+    printf("---------------------------- APPEND --------------------------\n");
+    lseek(vdisk_fd, OPEN_TABLE_OFFSET, SEEK_SET);
+    int lenth = BLOCKSIZE / sizeof(int);
+    int dir_index = -1;
+    int curr;
+    for (int i = 0; i < lenth; i++)
+    {
+        read(vdisk_fd, &curr, sizeof(int));
+        //
+        if (curr == fd)
+        {
+            dir_index = curr;
+            break;
+        }
+    }
+
+    if (dir_index != -1)
+    {
+        d_entry *dir = malloc(DIR_SIZE);
+        lseek(vdisk_fd, DIR_OFFSET + (dir_index * DIR_SIZE), SEEK_SET);
+        read(vdisk_fd, dir, DIR_SIZE);
+        printf("[DIR] Name: %s, fcb_index: %d\n", dir->filename, dir->fcb_index);
+
+        // Read fcb block
+        fcb_t *fcb = malloc(FCB_SIZE);
+        lseek(vdisk_fd, FCB_OFFSET + (dir->fcb_index * FCB_SIZE), SEEK_SET);
+        read(vdisk_fd, fcb, FCB_SIZE);
+        printf("[FCB] index_node: %d\n", fcb->index_node);
+
+        // If the index node is empty, allocate one
+        if (fcb->index_node == -1)
+        {
+            lseek(vdisk_fd, BLOCKSIZE, SEEK_SET);
+            int empty_blk_index;
+            int *curr = malloc(sizeof(int));
+            int found = 0;
+            for (int i = 0; i < BLOCKSIZE && !found; i++)
+            {
+                read(vdisk_fd, curr, sizeof(int));
+                for (int j = 0; j < 32; j++)
+                {
+                    if (!TestBit(curr, j))
+                    {
+                        empty_blk_index = i * 32 + j;
+                        found = 1;
+                        SetBit(curr, j);
+                        lseek(vdisk_fd, BLOCKSIZE + i, SEEK_SET);
+                        write(vdisk_fd, curr, sizeof(int));
+                        break;
+                    }
+                }
+            }
+
+            printf("[DATA BLK FOUND] blk_index: %d\n", empty_blk_index);
+        }
+    }
+    printf("--------------------------------------------------------------\n");
     return (0);
 }
 
@@ -321,7 +380,7 @@ void sfs_print()
     for (size_t i = 0; i < MAX_FILE_COUNT; i++)
     {
         read(vdisk_fd, dir, DIR_SIZE);
-        if (dir->is_used)
+        if (dir->is_used == 1)
             printf("[DIR] Name: %s, fcb_index: %d\n", dir->filename, dir->fcb_index);
     }
     printf("------------------------------------------------------------------\n");
