@@ -29,12 +29,20 @@ int main(int argc, char **argv)
     sfs_create("file10.txt");
     sfs_create("file20.txt");
     sfs_create("file2.txt");
-    sfs_print();
-    int fd = sfs_open("file20.txt", 1);
-    int fd2 = sfs_open("file2.txt", 1);
+    int fd1 = sfs_open("file20.txt", 1);
+    // printf("fd1: %d\n", fd1);
+    // int fd2 = sfs_open("file2.txt", 1);
+    // printf("fd2: %d\n", fd2);
+    // sfs_close(fd1);
+    // printf("closed ===========\n");
+    // sfs_getsize(fd1);
+    // sfs_getsize(fd2);
     char buff[] = "hello";
-    sfs_append(fd, buff, sizeof("hello"));
-    sfs_append(fd2, buff, sizeof("hello"));
+    sfs_append(fd1, buff, sizeof("hello"));
+    sfs_read(fd1, buff, sizeof("hello"));
+    sfs_print();
+    // sfs_append(fd1, buff, sizeof("hello"));
+    // sfs_append(fd2, buff, sizeof("hello"));
     if (ret != 0)
     {
         printf("there was an error in creating the disk\n");
