@@ -6,10 +6,10 @@ libsimplefs.a: 	simplefs.c
 	ranlib libsimplefs.a
 
 create_format: create_format.c
-	gcc -Wall -o create_format  create_format.c   -L. -lsimplefs
+	gcc -Wall -o create_format  create_format.c   -L. -lsimplefs -lm
 
 app: 	app.c
-	gcc -Wall -o app app.c  -L. -lsimplefs
+	gcc -Wall -o app app.c  -L. -lsimplefs -lm
 
 clean: 
 	rm -fr *.o *.a *~ a.out app  vdisk create_format
