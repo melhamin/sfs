@@ -56,10 +56,14 @@ int main(int argc, char **argv)
     // sfs_append(fd1, buff4, sizeof(buff4));
     char buff3[100];
     char big[sizeof(data2k)];
-    // sfs_read(fd1, buff3, sizeof(bog));
+    sfs_read(fd2, buff3, sizeof(buff3));
     sfs_read(fd1, big, sizeof(big));
-    printf("[DATA] ===> %s\n", big);
+    // printf("[DATA1] ===> %s\n", big);
+    // printf("[DATA2] ===> %s\n", buff3);
     sfs_print();
+    sfs_getsize(fd1);
+    sfs_getsize(fd2);
+    sfs_delete("file1.txt");
     // printf("fd1: %d\n", fd1);
     // int fd2 = sfs_open("file2.txt", 1);
     // printf("fd2: %d\n", fd2);

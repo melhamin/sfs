@@ -9,57 +9,10 @@
 #include <fcntl.h>
 #include "simplefs.h"
 
-#define FILENAME_SIZE 110
-#define MAX_OPEN_FILE 16
-#define MAX_FILE_COUNT 128
-#define DIR_BMAP_OFFSET BLOCKSIZE
-#define DIR_BMAP_BLK_COUNT 1
-// #define FCB_BMAP_OFFSET 2 * BLOCKSIZE
-#define DATA_BMAP_OFFSET 2 * BLOCKSIZE
-#define DATA_BMAP_BLK_COUNT 3
-#define DIR_SIZE 128
-#define FCB_SIZE 128
-#define FCB_COUNT 128
-#define DIR_OFFSET 5 * BLOCKSIZE
-#define FCB_OFFSET 9 * BLOCKSIZE
-#define DATA_BLK_OFFSET 13 * BLOCKSIZE
-
 // Bitwise manipulation macros.
 #define SetBit(A, k) (A[(k / 32)] |= (1 << (k % 32)))
 #define ClearBit(A, k) (A[(k / 32)] &= ~(1 << (k % 32)))
 #define TestBit(A, k) ({ (A[(k / 32)] & (1 << (k % 32))) != 0; })
-
-typedef struct s_block
-{
-    char disk_name[FILENAME_SIZE];
-    int size;
-    int num_of_blocks;
-} s_block;
-
-typedef struct d_entry
-{
-    int is_used;
-    char filename[FILENAME_SIZE];
-    int fcb_index;
-} d_entry;
-
-struct fcb
-{
-    int is_used;
-    int i_node;
-    int data_blks_count;
-    size_t size;
-} fcb_default = {0, -1, 0, 0};
-typedef struct fcb fcb_t;
-
-struct open_file
-{
-    char filename[FILENAME_SIZE];
-    int fcb_index;
-    int o_mode;
-    int is_used;
-} open_file_default = {"", -1, -1, 0};
-typedef struct open_file open_file_t;
 
 // Global Variables =======================================
 int vdisk_fd; // Global virtual disk file descriptor. Global within the library.
@@ -219,6 +172,7 @@ int find_empty_blk(off_t bmap_offset, int bmap_blk_count, off_t blk_start, int b
         }
     }
 
+    free(curr);
     if (found)
         return blk_start + (blk_size * empty_blk_index);
 
@@ -415,10 +369,16 @@ int sfs_getsize(int fd)
 {
     if (is_open_fd(fd))
     {
-        printf("[+] File is open, size: 0\n");
+        int fcb_index = open_table[fd].fcb_index;
+        fcb_t *fcb = read_fcb(fcb_index);
+        printf("[SIZE] size:: %ld\n", fcb->size);
+        return fcb->size;
     }
     else
+    {
         printf("[-] File is not open, size: 0\n");
+        return -1;
+    }
 
     return (0);
 }
@@ -651,9 +611,74 @@ int sfs_append(int fd, void *buf, int n)
     return (0);
 }
 
+// Resets the bitmap entry for the given [blk_off] data block addres
+// [blks_start] is the starting address of block category(Directory, FCB, DATA)
+int reset_bmap(off_t blk_off, off_t blks_start, int blk_size)
+{
+    int index = floor((blk_off - blks_start) / blk_size);
+    printf("[BEFORE DELETION] blk: %d, index ====> %d\n", blk_off, index);
+    int bmap_index = index / 32;
+    int *bmap = malloc(sizeof(int));
+    lseek(vdisk_fd, DATA_BMAP_OFFSET + bmap_index, SEEK_SET);
+    read(vdisk_fd, bmap, sizeof(int));
+    ClearBit(bmap, index);
+
+    // Write back the update bmap to the disk
+    lseek(vdisk_fd, DATA_BMAP_OFFSET + bmap_index, SEEK_SET);
+    write(vdisk_fd, bmap, sizeof(int));
+    free(bmap);
+}
+
 int sfs_delete(char *filename)
 {
     lseek(vdisk_fd, DIR_OFFSET, SEEK_SET);
+    d_entry *dir = malloc(DIR_SIZE);
+    int found = 0;
+    for (size_t i = 0; i < MAX_FILE_COUNT; i++)
+    {
+        read(vdisk_fd, dir, DIR_SIZE);
+        if (dir->is_used && strncmp(dir->filename, filename, FILENAME_SIZE) == 0)
+        {
+            found = 1;
+            break;
+        }
+    }
+
+    if (!found)
+    {
+        printf("[DELETE] A file with '%s' name not found!\n", filename);
+        return -1;
+    }
+
+    // Mark data blocks in the fcb as free
+    fcb_t *fcb = read_fcb(dir->fcb_index);
+    int data_blks[fcb->data_blks_count];
+    lseek(vdisk_fd, fcb->i_node, SEEK_SET);
+    read(vdisk_fd, data_blks, sizeof(int) * fcb->data_blks_count);
+
+    reset_bmap((off_t)data_blks[0], DATA_BLK_OFFSET, BLOCKSIZE);
+
+    // int index = floor((data_blks[0] - DATA_BLK_OFFSET) / BLOCKSIZE);
+
+    // int bmap_index = index / 32;
+    // int *bmap = malloc(sizeof(int));
+    // lseek(vdisk_fd, DATA_BMAP_OFFSET + bmap_index, SEEK_SET);
+    // read(vdisk_fd, bmap, sizeof(int));
+    // ClearBit(bmap, index);
+
+    // lseek(vdisk_fd, DATA_BMAP_OFFSET + bmap_index, SEEK_SET);
+    // write(vdisk_fd, bmap, sizeof(int));
+
+    int blk_offset = find_empty_blk(DATA_BMAP_OFFSET, DATA_BMAP_BLK_COUNT, DATA_BLK_OFFSET, BLOCKSIZE);
+    printf("start -====> %d\n", DATA_BLK_OFFSET);
+    printf("[AFTER DELETION] new_blk: %d\n", blk_offset);
+
+    // printf("------------- delete blks -------------\n");
+    // for (int i = 0; i < fcb->data_blks_count; i++)
+    // {
+    //     printf(" %d ", data_blks[i]);
+    // }
+    // printf("\n");
 
     return (0);
 }
@@ -680,8 +705,8 @@ void sfs_print()
     // }
     fcb_t *fcb = read_fcb(0);
     printf("[FCB] size: %ld, i_node: %d, data_blks: %d\n", fcb->size, fcb->i_node, fcb->data_blks_count);
-    // fcb = read_fcb(1);
-    // printf("[FCB] size: %ld, i_node: %d, data_blks: %d\n", fcb->size, fcb->i_node, fcb->data_blks_count);
+    fcb = read_fcb(1);
+    printf("[FCB] size: %ld, i_node: %d, data_blks: %d\n", fcb->size, fcb->i_node, fcb->data_blks_count);
     // fcb = read_fcb(2);
     // printf("[FCB] size: %ld, i_node: %d, data_blks: %d\n", fcb->size, fcb->i_node, fcb->data_blks_count);
     // fcb = read_fcb(3);
