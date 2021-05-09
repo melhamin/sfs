@@ -432,7 +432,7 @@ int sfs_read(int fd, void *buf, int n)
     // printf("full blks: %d\n", full_blks);
     // printf("full blks: %d\n", last_portion);
 
-    printf("[READ] n: %d, read_bytes: %d, blk_count: %d, data_blks[0]: %d\n", n, size, blk_count, data_blks[0]);
+    // printf("[READ] n: %d, read_bytes: %d, blk_count: %d, data_blks[0]: %d\n", n, size, blk_count, data_blks[0]);
     free(fcb);
 
     return (0);
@@ -474,7 +474,7 @@ int add_data_blk(fcb_t *fcb, int blk_count)
 
 int sfs_append(int fd, void *buf, int n)
 {
-    printf("---------------------------- APPEND --------------------------\n");
+    // printf("---------------------------- APPEND --------------------------\n");
     if (!is_open_fd(fd))
     {
         printf("[-] Cannot append, file is not open!\n");
@@ -529,7 +529,7 @@ int sfs_append(int fd, void *buf, int n)
         }
     }
 
-    printf("[FCB] size: %ld, blocks: %d, inode: %d\n", fcb->size, fcb->data_blks_count, fcb->i_node);
+    // printf("[FCB] size: %ld, blocks: %d, inode: %d\n", fcb->size, fcb->data_blks_count, fcb->i_node);
 
     // Read pointers to the data blocks
     int count = fcb->data_blks_count;
@@ -542,12 +542,12 @@ int sfs_append(int fd, void *buf, int n)
     int first_free_blk = floor(fcb->size / (double)BLOCKSIZE);
     int used_bytes = fcb->size - (BLOCKSIZE * first_free_blk);
 
-    printf("[DATA BLKS] => ");
-    for (int i = 0; i < count; i++)
-    {
-        printf(" %d ", data_blks[i]);
-    }
-    printf(" -- first_free: %d\n", data_blks[first_free_blk]);
+    // printf("[DATA BLKS] => ");
+    // for (int i = 0; i < count; i++)
+    // {
+    //     printf(" %d ", data_blks[i]);
+    // }
+    // printf(" -- first_free: %d\n", data_blks[first_free_blk]);
 
     // Write bytes of data that can be fit in the
     // first partially filled block
@@ -561,7 +561,7 @@ int sfs_append(int fd, void *buf, int n)
         write_offset = data_blks[first_free_blk] + used_bytes;
         lseek(vdisk_fd, write_offset, SEEK_SET);
         write(vdisk_fd, buf, free_space);
-        printf("[PARTIAL WRITE] Wrote: %d bytes --> at_blk: %d\n", n, data_blks[first_free_blk]);
+        // printf("[PARTIAL WRITE] Wrote: %d bytes --> at_blk: %d\n", n, data_blks[first_free_blk]);
     }
     // Else write as much as available to the last block
     // write remaining into the newly allocated data blocks
@@ -571,7 +571,7 @@ int sfs_append(int fd, void *buf, int n)
         write_offset = data_blks[first_free_blk] + used_bytes;
         lseek(vdisk_fd, write_offset, SEEK_SET);
         write(vdisk_fd, buf, free_space);
-        printf("[PARTIAL WRITE] Wrote: %d bytes --> at_blk: %d\n", free_space, data_blks[first_free_blk]);
+        // printf("[PARTIAL WRITE] Wrote: %d bytes --> at_blk: %d\n", free_space, data_blks[first_free_blk]);
 
         // Remaining size of the data after filling the partially written block
         int rem_data = n - free_space;
@@ -579,14 +579,14 @@ int sfs_append(int fd, void *buf, int n)
         // If data size is more than one BLOCKSIZE, find the
         // number of full blocks that can be filled with it.
         int blk_count = floor((double)rem_data / BLOCKSIZE);
-        printf("[FULL BLOCK] rem_data: %d, Count: %d\n", rem_data, blk_count);
+        // printf("[FULL BLOCK] rem_data: %d, Count: %d\n", rem_data, blk_count);
         int start = free_space;
         for (int i = 0; i < blk_count; i++)
         {
             write_offset = data_blks[first_free_blk + i];
             lseek(vdisk_fd, write_offset, SEEK_SET);
             write(vdisk_fd, buf + start, BLOCKSIZE);
-            printf("[FULL WRITE] Wrote: %d bytes --> blk: %ld\n", BLOCKSIZE, write_offset);
+            // printf("[FULL WRITE] Wrote: %d bytes --> blk: %ld\n", BLOCKSIZE, write_offset);
             start += BLOCKSIZE;
         }
 
@@ -594,12 +594,12 @@ int sfs_append(int fd, void *buf, int n)
         write_offset = data_blks[count - 1];
         lseek(vdisk_fd, write_offset, SEEK_SET);
         int last_portion = rem_data - blk_count * BLOCKSIZE;
-        printf("[LAST PORTION] wrote: %d, blk_at: %d\n", last_portion, data_blks[count - 1]);
+        // printf("[LAST PORTION] wrote: %d, blk_at: %d\n", last_portion, data_blks[count - 1]);
         write(vdisk_fd, buf + start, last_portion);
 
         // // starting point after the current data in the block
         // // write_offset = data_blks[0] + fcb->size;
-        printf("[APPEND END] data_blk: %d, offset: %ld\n", data_blks[0], write_offset);
+        // printf("[APPEND END] data_blk: %d, offset: %ld\n", data_blks[0], write_offset);
     }
 
     // Update file size in FCB block and write back to disk
@@ -607,26 +607,53 @@ int sfs_append(int fd, void *buf, int n)
     off_t fcb_offset = FCB_OFFSET + fcb_index * FCB_SIZE;
     lseek(vdisk_fd, fcb_offset, SEEK_SET);
     write(vdisk_fd, fcb, FCB_SIZE);
-    printf("--------------------------------------------------------------\n");
+    // printf("--------------------------------------------------------------\n");
     return (0);
 }
 
 // Resets the bitmap entry for the given [blk_off] data block addres
 // [blks_start] is the starting address of block category(Directory, FCB, DATA)
-int reset_bmap(off_t blk_off, off_t blks_start, int blk_size)
+int reset_bmap(off_t blk_off, off_t bmap_off, off_t blks_start, int blk_size)
 {
     int index = floor((blk_off - blks_start) / blk_size);
-    printf("[BEFORE DELETION] blk: %d, index ====> %d\n", blk_off, index);
+    // printf("[BEFORE DELETION] blk: %ld, index ====> %d\n", blk_off, index);
     int bmap_index = index / 32;
     int *bmap = malloc(sizeof(int));
-    lseek(vdisk_fd, DATA_BMAP_OFFSET + bmap_index, SEEK_SET);
+    lseek(vdisk_fd, bmap_off + bmap_index, SEEK_SET);
     read(vdisk_fd, bmap, sizeof(int));
     ClearBit(bmap, index);
 
     // Write back the update bmap to the disk
-    lseek(vdisk_fd, DATA_BMAP_OFFSET + bmap_index, SEEK_SET);
+    lseek(vdisk_fd, bmap_off + bmap_index, SEEK_SET);
     write(vdisk_fd, bmap, sizeof(int));
     free(bmap);
+
+    return 0;
+}
+
+// Resets the FCB with given index in the FCB blocks.
+int reset_fcb(int index)
+{
+    // Read FCB block
+    off_t fcb_offset = FCB_OFFSET + index * FCB_SIZE;
+    fcb_t *fcb = malloc(FCB_SIZE);
+    lseek(vdisk_fd, fcb_offset, SEEK_SET);
+    read(vdisk_fd, fcb, FCB_SIZE);
+
+    // Rest
+    fcb->data_blks_count = 0;
+    fcb->is_used = 0;
+    fcb->i_node = -1;
+    fcb->size = 0;
+
+    // Write back to the FCB blocks
+    lseek(vdisk_fd, fcb_offset, SEEK_SET);
+    write(vdisk_fd, fcb, FCB_SIZE);
+
+    // Reset bitmap entry for this FCB
+    reset_bmap((off_t)fcb_offset, DATA_BMAP_OFFSET, FCB_OFFSET, FCB_SIZE);
+
+    return 0;
 }
 
 int sfs_delete(char *filename)
@@ -634,12 +661,14 @@ int sfs_delete(char *filename)
     lseek(vdisk_fd, DIR_OFFSET, SEEK_SET);
     d_entry *dir = malloc(DIR_SIZE);
     int found = 0;
+    int dir_index;
     for (size_t i = 0; i < MAX_FILE_COUNT; i++)
     {
         read(vdisk_fd, dir, DIR_SIZE);
         if (dir->is_used && strncmp(dir->filename, filename, FILENAME_SIZE) == 0)
         {
             found = 1;
+            dir_index = i;
             break;
         }
     }
@@ -656,30 +685,32 @@ int sfs_delete(char *filename)
     lseek(vdisk_fd, fcb->i_node, SEEK_SET);
     read(vdisk_fd, data_blks, sizeof(int) * fcb->data_blks_count);
 
-    reset_bmap((off_t)data_blks[0], DATA_BLK_OFFSET, BLOCKSIZE);
+    // Reset bitmap entries for the data blocks
+    for (int i = 0; i < fcb->data_blks_count; i++)
+        reset_bmap((off_t)data_blks[i], DATA_BMAP_OFFSET, DATA_BLK_OFFSET, BLOCKSIZE);
 
-    // int index = floor((data_blks[0] - DATA_BLK_OFFSET) / BLOCKSIZE);
+    // Reset bitmap entry for index node
+    reset_bmap((off_t)fcb->i_node, DATA_BMAP_OFFSET, DATA_BLK_OFFSET, BLOCKSIZE);
 
-    // int bmap_index = index / 32;
-    // int *bmap = malloc(sizeof(int));
-    // lseek(vdisk_fd, DATA_BMAP_OFFSET + bmap_index, SEEK_SET);
-    // read(vdisk_fd, bmap, sizeof(int));
-    // ClearBit(bmap, index);
+    // Reset FCB
+    reset_fcb(dir->fcb_index);
 
-    // lseek(vdisk_fd, DATA_BMAP_OFFSET + bmap_index, SEEK_SET);
-    // write(vdisk_fd, bmap, sizeof(int));
+    // // Reset bitmap entry for the directory
+    off_t dir_offset = DIR_OFFSET + dir_index * DIR_SIZE;
+    reset_bmap((off_t)dir_offset, DIR_BMAP_OFFSET, DIR_OFFSET, DIR_SIZE);
 
-    int blk_offset = find_empty_blk(DATA_BMAP_OFFSET, DATA_BMAP_BLK_COUNT, DATA_BLK_OFFSET, BLOCKSIZE);
-    printf("start -====> %d\n", DATA_BLK_OFFSET);
-    printf("[AFTER DELETION] new_blk: %d\n", blk_offset);
+    // Set directory as not used and write it back to the disk
+    dir->fcb_index = -1;
+    dir->is_used = 0;
+    strncpy(dir->filename, "", sizeof(char));
 
-    // printf("------------- delete blks -------------\n");
-    // for (int i = 0; i < fcb->data_blks_count; i++)
-    // {
-    //     printf(" %d ", data_blks[i]);
-    // }
-    // printf("\n");
+    lseek(vdisk_fd, dir_offset, SEEK_SET);
+    write(vdisk_fd, dir, DIR_SIZE);
 
+    free(dir);
+    free(fcb);
+
+    printf("[DELETE] File '%s' was successfuly deleted!\n", filename);
     return (0);
 }
 
