@@ -8,14 +8,14 @@
 #define FILENAME_SIZE 110
 #define MAX_OPEN_FILE 16
 #define MAX_FILE_COUNT 128
-#define DIR_BMAP_OFFSET BLOCKSIZE
-#define DIR_BMAP_BLK_COUNT 1
+#define MAX_DBLK_PER_FILE 1024
 // #define FCB_BMAP_OFFSET 2 * BLOCKSIZE
 #define DATA_BMAP_OFFSET 2 * BLOCKSIZE
-#define DATA_BMAP_BLK_COUNT 3
+#define DATA_BMAP_BLK_COUNT 4
 #define DIR_SIZE 128
 #define FCB_SIZE 128
 #define FCB_COUNT 128
+#define DIR_COUNT 128
 #define DIR_OFFSET 5 * BLOCKSIZE
 #define FCB_OFFSET 9 * BLOCKSIZE
 #define DATA_BLK_OFFSET 13 * BLOCKSIZE
@@ -73,9 +73,9 @@ int sfs_append(int fd, void *buf, int n);
 int sfs_delete(char *filename);
 
 // Added functions
-void init_super_blk(char *diskname, int size, int blk_count);
-void init_dir_blks();
-void init_fcb_blks();
+int init_super_blk(char *diskname, int size, int blk_count);
+int init_dir_blks();
+int init_fcb_blks();
 int find_empty_blk(off_t bmap_offset, int bmap_blk_count, off_t blk_start, int blk_size);
 int check_dir_exist(char *name);
 fcb_t *find_empty_fcb(int *index);

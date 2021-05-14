@@ -15,7 +15,7 @@ int main(int argc, char **argv)
     int size;
     char vdiskname[200];
 
-    printf("started\n");
+    // printf("started\n");
 
     if (argc != 2)
     {
@@ -25,6 +25,7 @@ int main(int argc, char **argv)
     strcpy(vdiskname, argv[1]);
 
     ret = sfs_mount(vdiskname);
+
     if (ret != 0)
     {
         printf("could not mount \n");
@@ -36,42 +37,143 @@ int main(int argc, char **argv)
     sfs_create("file2.bin");
     sfs_create("file3.bin");
 
+    int size4mb = 10000;
+    // int size4mb = 4194304;
+    int buff_size = 4096;
+    int count = 1024;
+
+    // char *data = malloc(size4mb);
+    // for (size_t i = 0; i < size4mb; i++)
+    // {
+    //     data[i] = (char *)65;
+    // }
+
+    // printf(" --------------- \n");
+    // fd1 = sfs_open("file1.bin", MODE_APPEND);
+    // sfs_append(fd1, (void *)data, size4mb);
+
     fd1 = sfs_open("file1.bin", MODE_APPEND);
-    fd2 = sfs_open("file2.bin", MODE_APPEND);
-    for (i = 0; i < 10000; ++i)
+    for (i = 0; i < size4mb; ++i)
     {
-        buffer[0] = (char)65;
-        sfs_append(fd1, (void *)buffer, 1);
+        buffer[0] = (char)66;
+        if (sfs_append(fd1, (void *)buffer, 1) == -1)
+        {
+            printf("FATAL: failed to append\n");
+            break;
+        }
     }
 
-    for (i = 0; i < 10000; ++i)
+    sfs_delete("file1.bin");
+    fd1 = sfs_open("file2.bin", MODE_APPEND);
+    for (i = 0; i < size4mb; ++i)
     {
-        buffer[0] = (char)65;
-        buffer[1] = (char)66;
-        buffer[2] = (char)67;
-        buffer[3] = (char)68;
-        sfs_append(fd2, (void *)buffer, 4);
+        buffer[0] = (char)66;
+        if (sfs_append(fd1, (void *)buffer, 1) == -1)
+        {
+            printf("FATAL: failed to append\n");
+            break;
+        }
     }
 
-    sfs_close(fd1);
-    sfs_close(fd2);
+    char *b = malloc(size4mb);
+    sfs_read(fd1, (void *)b, size4mb);
+    // printf("data ====> %s\n", b);
 
-    fd = sfs_open("file3.bin", MODE_APPEND);
-    for (i = 0; i < 10000; ++i)
-    {
-        memcpy(buffer, buffer2, 8); // just to show memcpy
-        sfs_append(fd, (void *)buffer, 8);
-    }
-    sfs_close(fd);
+    FILE *f1 = fopen("out1.txt", "w");
+    if (f1 == NULL)
+        return -1;
+    fprintf(f1, b);
 
-    fd = sfs_open("file3.bin", MODE_READ);
-    size = sfs_getsize(fd);
-    for (i = 0; i < size; ++i)
-    {
-        sfs_read(fd, (void *)buffer, 1);
-        c = (char)buffer[0];
-        c = c + 1;
-    }
-    sfs_close(fd);
-    ret = sfs_umount();
+    // fd2 = sfs_open("file2.bin", MODE_APPEND);
+
+    // for (i = 0; i < size4mb; ++i)
+    // {
+    //     buffer[0] = (char)66;
+    //     if (sfs_append(fd1, (void *)buffer, 1) == -1)
+    //     {
+    //         printf("FATAL: failed to append\n");
+    //         break;
+    //     }
+    // }
+
+    // fd2 = sfs_open("file2.bin", MODE_APPEND);
+    // // fd2 = sfs_open("file2.bin", MODE_APPEND);
+    // char buff[1024];
+    // for (i = 0; i < size4mb; ++i)
+    // {
+    //     buff[0] = (char)65;
+    //     if (sfs_append(fd2, (void *)buff, 1) == -1)
+    //     {
+    //         printf("FATAL: failed to append\n");
+    //         break;
+    //     }
+    // }
+
+    // // for (i = 0; i < 10000; ++i)
+    // // {
+    // //     if (sfs_append(fd1, (void *)buffer, 1) == -1)
+    // //     {
+    // //         printf("FATAL: failed to append\n");
+    // //         break;
+    // //     }
+    // // }
+
+    // char *b = malloc(size4mb);
+    // sfs_read(fd1, (void *)b, size4mb);
+    // // printf("data ====> %s\n", b);
+
+    // FILE *f1 = fopen("out.txt", "w");
+    // if (f1 == NULL)
+    //     return -1;
+    // fprintf(f1, b);
+
+    // char *cc = malloc(size4mb);
+    // sfs_read(fd2, (void *)cc, size4mb);
+    // FILE *f2 = fopen("out2.txt", "w");
+    // if (f2 == NULL)
+    //     return -1;
+    // fprintf(f2, cc);
+
+    // int fd10 = sfs_open("file2.bin", MODE_APPEND);
+
+    // for (i = 0; i < 10000; ++i)
+    // {
+    //     buffer[0] = (char)66;
+    //     sfs_append(fd10, (void *)buffer, 1);
+    // }
+
+    // b[10000];
+    // sfs_read(fd10, b, sizeof(b));
+    // printf("size: %ld\ndata =====> %s\n", sfs_getsize(fd10), b);
+
+    // for (i = 0; i < 10000; ++i)
+    // {
+    //     buffer[0] = (char)65;
+    //     buffer[1] = (char)66;
+    //     buffer[2] = (char)67;
+    //     buffer[3] = (char)68;
+    //     sfs_append(fd2, (void *)buffer, 4);
+    // }
+
+    // sfs_close(fd1);
+    // sfs_close(fd2);
+
+    // fd = sfs_open("file3.bin", MODE_APPEND);
+    // for (i = 0; i < 10000; ++i)
+    // {
+    //     memcpy(buffer, buffer2, 8); // just to show memcpy
+    //     sfs_append(fd, (void *)buffer, 8);
+    // }
+    // sfs_close(fd);
+
+    // fd = sfs_open("file3.bin", MODE_READ);
+    // size = sfs_getsize(fd);
+    // for (i = 0; i < size; ++i)
+    // {
+    //     sfs_read(fd, (void *)buffer, 1);
+    //     c = (char)buffer[0];
+    //     c = c + 1;
+    // }
+    // sfs_close(fd);
+    // ret = sfs_umount();
 }
