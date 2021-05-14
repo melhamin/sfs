@@ -304,9 +304,9 @@ int sfs_create(char *filename)
     off_t dir_offset;
     d_entry *dir = find_empty_dir(&dir_offset);
 
-    if (dir_offset == -1)
+    if (dir == NULL || dir_offset == -1)
     {
-        printf("[-] Could not find an empty block for new directory!\n");
+        printf("[-] Could not allocate an empty block for new directory!\n");
         free(dir);
         return -1;
     }
@@ -359,6 +359,7 @@ int sfs_create(char *filename)
     // printf("[WRITE TO] dir_entry: %ld, dir_offset: %ld, fcb_blk: %d, fcb_offset: %ld, name: %s\n", empty_blk, dir_to_write_off, curr_entry->fcb_index, fcb_to_write_off, filename);
     free(fcb);
     free(dir);
+    printf("[CREATE] %s\n", filename);
     return (0);
 }
 
@@ -490,11 +491,25 @@ fcb_t *read_fcb(int index)
 
 int sfs_read(int fd, void *buf, int n)
 {
+    if (fd < 0 || fd > MAX_OPEN_FILE)
+    {
+        printf("[-] Invalid fd: %d\n", fd);
+        return -1;
+    }
+
+    // if(!check_dir_exist())
+
     if (!is_open_fd(fd))
     {
         printf("[-] File with fd=%d is not open!\n", fd);
         return -1;
     }
+
+    // if (open_table[fd].o_mode != MODE_READ)
+    // {
+    //     printf("[-] File is not opened in read mode\n");
+    //     return -1;
+    // }
 
     // Find the corresponding FCB block
     int fcb_index = open_table[fd].fcb_index;
@@ -593,10 +608,15 @@ int add_data_blk(fcb_t *fcb, int blk_count)
 
 int sfs_append(int fd, void *buf, int n)
 {
-    // printf("---------------------------- APPEND --------------------------\n");
+    if (fd < 0 || fd > MAX_OPEN_FILE)
+    {
+        printf("[-] Invalid fd: %d\n", fd);
+        return -1;
+    }
+
     if (!is_open_fd(fd))
     {
-        printf("[-] Cannot append, file is not open!\n");
+        printf("[-] Cannot append, '%s' is not open!\n", fd);
         return -1;
     }
 
@@ -619,7 +639,6 @@ int sfs_append(int fd, void *buf, int n)
     int should_add_blk = (fcb->size + n) > (fcb->data_blks_count * BLOCKSIZE);
     if (should_add_blk)
     {
-        // printf("------------------ [ADD BLK] ----------------\n");
         int last_blk_free_space = fcb->data_blks_count * BLOCKSIZE - fcb->size;
         // Remaining size of data for which new block need to be allocated
         int rem_size = n - last_blk_free_space;
@@ -689,7 +708,6 @@ int sfs_append(int fd, void *buf, int n)
     // write remaining into the newly allocated data blocks
     else
     {
-        // printf(" ------------------- [FULL WRITE] ------------------------ \n");
         write_offset = data_blks[first_free_blk] + used_bytes;
         lseek(vdisk_fd, write_offset, SEEK_SET);
         if (write(vdisk_fd, buf, free_space) == -1)
@@ -698,7 +716,6 @@ int sfs_append(int fd, void *buf, int n)
             free(fcb);
             return -1;
         }
-        // printf("[PARTIAL WRITE] Wrote: %d bytes --> at_blk: %d\n", free_space, data_blks[first_free_blk]);
 
         // Remaining size of the data after filling the partially written block
         int rem_data = n - free_space;
