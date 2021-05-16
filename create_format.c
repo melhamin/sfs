@@ -1,12 +1,9 @@
-
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
 #include "simplefs.h"
 
-char data[] = "this is test data";
 int main(int argc, char **argv)
 {
     int ret;
@@ -25,12 +22,11 @@ int main(int argc, char **argv)
     printf("started\n");
 
     ret = create_format_vdisk(vdiskname, m);
-    sfs_mount(vdiskname);
-
     if (ret != 0)
     {
         printf("there was an error in creating the disk\n");
         exit(1);
     }
+
     printf("disk created and formatted. %s %d\n", vdiskname, m);
 }

@@ -874,6 +874,22 @@ int remove_dir(int index)
 
 int sfs_delete(char *filename)
 {
+    // Close file if is open
+    if (is_open_name(filename))
+    {
+        d_entry dir;
+        for (size_t i = 0; i < MAX_OPEN_FILE; i++)
+        {
+
+            if (open_table[i].is_used && strncmp(open_table[i].filename, filename, FILENAME_SIZE))
+            {
+                open_table[i].is_used = 0;
+                strncpy(open_table[i].filename, "", FILENAME_SIZE);
+                break;
+            }
+        }
+    }
+
     lseek(vdisk_fd, DIR_OFFSET, SEEK_SET);
     d_entry dir;
     int found = 0;
