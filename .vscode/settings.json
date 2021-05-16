@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "*.js": "javascriptreact",
+        "simplefs.h": "c"
+    }
+}
