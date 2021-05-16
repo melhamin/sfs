@@ -103,7 +103,7 @@ int read_block(void *block, int k)
     n = read(vdisk_fd, block, BLOCKSIZE);
     if (n != BLOCKSIZE)
     {
-        printf("read error\n");
+        // printf("read error\n");
         return -1;
     }
     return (0);
@@ -120,7 +120,7 @@ int write_block(void *block, int k)
     n = write(vdisk_fd, block, BLOCKSIZE);
     if (n != BLOCKSIZE)
     {
-        printf("write error\n");
+        // printf("write error\n");
         return (-1);
     }
     return 0;
@@ -185,10 +185,8 @@ int create_format_vdisk(char *vdiskname, unsigned int m)
     int count;
     size = num << m;
     count = size / BLOCKSIZE;
-    //    printf ("%d %d", m, size);
     sprintf(command, "dd if=/dev/zero of=%s bs=%d count=%d",
             vdiskname, BLOCKSIZE, count);
-    //printf ("executing command = %s\n", command);
     system(command);
     // now write the code to format the disk below.
     // .. your code...
@@ -198,17 +196,17 @@ int create_format_vdisk(char *vdiskname, unsigned int m)
     // Initialize blocks
     if (init_super_blk(vdiskname, size, count) != 0)
     {
-        printf("[INIT SUPER BLK] Failed to initialize super block.\n");
+        // printf("[INIT SUPER BLK] Failed to initialize super block.\n");
         return -1;
     }
     if (init_dir_blks() != 0)
     {
-        printf("[INIT DIR BLKs] Failed to initialize directory blocks.\n");
+        // printf("[INIT DIR BLKs] Failed to initialize directory blocks.\n");
         return -1;
     }
     if (init_fcb_blks() != 0)
     {
-        printf("[INIT DIR BLKs] Failed to initialize FCB blocks.\n");
+        // printf("[INIT DIR BLKs] Failed to initialize FCB blocks.\n");
         return -1;
     }
 
@@ -247,7 +245,7 @@ int find_empty_blk(off_t bmap_offset, int bmap_blk_count, off_t blk_start, int b
     {
         if (read(vdisk_fd, bmap, sizeof(int)) == -1)
         {
-            printf("[READ BMAP] Error while reading bitmap!\n");
+            // printf("[READ BMAP] Error while reading bitmap!\n");
             free(bmap);
             return -1;
         }
@@ -261,7 +259,7 @@ int find_empty_blk(off_t bmap_offset, int bmap_blk_count, off_t blk_start, int b
                 lseek(vdisk_fd, bmap_offset + i, SEEK_SET);
                 if (write(vdisk_fd, bmap, sizeof(int)) == -1)
                 {
-                    printf("[WRITE BMAP] Error while reading bitmap!\n");
+                    // printf("[WRITE BMAP] Error while reading bitmap!\n");
                     free(bmap);
                     return -1;
                 }
@@ -289,12 +287,12 @@ int check_dir_exist(char *name)
     {
         if (read(vdisk_fd, &curr_entry, DIR_SIZE) == -1)
         {
-            printf("[DIR EXIST] Error while reading directory!\n");
+            // printf("[DIR EXIST] Error while reading directory!\n");
             return -1;
         }
         if (curr_entry.is_used)
         {
-            // printf("[USED] -> Name: %s, entry: %ld, fcb_index: %d\n", curr_entry->filename, i, curr_entry->fcb_index);
+            // // printf("[USED] -> Name: %s, entry: %ld, fcb_index: %d\n", curr_entry->filename, i, curr_entry->fcb_index);
             if (strncmp(curr_entry.filename, name, FILENAME_SIZE) == 0)
             {
                 return 1;
@@ -318,10 +316,10 @@ fcb_t find_empty_fcb(int *index)
     {
         if (read(vdisk_fd, &fcb, FCB_SIZE) == -1)
         {
-            printf("[FIND FCB] Error while reading fcb!\n");
+            // printf("[FIND FCB] Error while reading fcb!\n");
             return fcb;
         }
-        // printf("fcb is used ---------> %d\n", fcb->is_used);
+        // // printf("fcb is used ---------> %d\n", fcb->is_used);
         if (!fcb.is_used)
             break;
     }
@@ -339,10 +337,10 @@ d_entry find_empty_dir(off_t *offset)
     {
         if (read(vdisk_fd, &dir, FCB_SIZE) == -1)
         {
-            printf("[FIND FCB] Error while reading fcb!\n");
+            // printf("[FIND FCB] Error while reading fcb!\n");
             break;
         }
-        // printf("fcb is used ---------> %d\n", fcb->is_used);
+        // // printf("fcb is used ---------> %d\n", fcb->is_used);
         if (!dir.is_used)
         {
             *offset = DIR_OFFSET + dir_index * DIR_SIZE;
@@ -357,7 +355,7 @@ int sfs_create(char *filename)
 {
     if (check_dir_exist(filename))
     {
-        printf("A file with name [%s] already exists!\n", filename);
+        // printf("A file with name [%s] already exists!\n", filename);
         return -1;
     }
 
@@ -367,7 +365,7 @@ int sfs_create(char *filename)
 
     if (dir.fcb_index != -1 || dir_offset == -1)
     {
-        printf("[-] Could not allocate an empty block for new directory!\n");
+        // printf("[-] Could not allocate an empty block for new directory!\n");
         return -1;
     }
 
@@ -381,7 +379,7 @@ int sfs_create(char *filename)
 
     if (fcb.i_node != -1)
     {
-        printf("[SFS_CREATE WRITE DIR] Failed to allocate an FCB.\n");
+        // printf("[SFS_CREATE WRITE DIR] Failed to allocate an FCB.\n");
         return -1;
     }
 
@@ -394,7 +392,7 @@ int sfs_create(char *filename)
     lseek(vdisk_fd, dir_offset, SEEK_SET);
     if (write(vdisk_fd, &dir, DIR_SIZE) == -1)
     {
-        printf("[SFS_CREATE WRITE DIR] Error while writing directory!\n");
+        // printf("[SFS_CREATE WRITE DIR] Error while writing directory!\n");
         return -1;
     }
 
@@ -403,12 +401,12 @@ int sfs_create(char *filename)
     lseek(vdisk_fd, fcb_to_write_off, SEEK_SET);
     if (write(vdisk_fd, &fcb, FCB_SIZE) == -1)
     {
-        printf("[SFS_CREATE WRITE FCB] Error while writing fcb!\n");
+        // printf("[SFS_CREATE WRITE FCB] Error while writing fcb!\n");
         return -1;
     }
     //
-    // printf("[WRITE TO] dir_entry: %ld, dir_offset: %ld, fcb_blk: %d, fcb_offset: %ld, name: %s\n", empty_blk, dir_to_write_off, curr_entry->fcb_index, fcb_to_write_off, filename);
-    printf("[CREATE] %s\n", filename);
+    // // printf("[WRITE TO] dir_entry: %ld, dir_offset: %ld, fcb_blk: %d, fcb_offset: %ld, name: %s\n", empty_blk, dir_to_write_off, curr_entry->fcb_index, fcb_to_write_off, filename);
+    // printf("[CREATE] %s\n", filename);
     return 0;
 }
 
@@ -451,7 +449,7 @@ int sfs_open(char *file, int mode)
 {
     if (is_open_name(file) == 1)
     {
-        printf("[-] File is already open!\n");
+        // printf("[-] File is already open!\n");
         return -1;
     }
 
@@ -462,12 +460,12 @@ int sfs_open(char *file, int mode)
     {
         if (read(vdisk_fd, &dir, DIR_SIZE) == -1)
         {
-            printf("[SFS_OPEN READ DIR] Error while reading directory!\n");
+            // printf("[SFS_OPEN READ DIR] Error while reading directory!\n");
             return -1;
         }
         if (dir.is_used && strncmp(dir.filename, file, FILENAME_SIZE) == 0)
         {
-            printf("[FILE FOUND] Name: %s, index: %ld\n", dir.filename, i);
+            // printf("[FILE FOUND] Name: %s, index: %ld\n", dir.filename, i);
             file_index = i;
             break;
         }
@@ -475,7 +473,7 @@ int sfs_open(char *file, int mode)
 
     if (file_index == -1)
     {
-        printf("[NOT FOUND] File '%s' not found!\n", file);
+        // printf("[NOT FOUND] File '%s' not found!\n", file);
         return -1;
     }
 
@@ -483,7 +481,7 @@ int sfs_open(char *file, int mode)
     int fd = add_to_op_table(file, dir.fcb_index, mode);
     if (fd == -1)
     {
-        printf("[-] Failed to add file to the open table!\n");
+        // printf("[-] Failed to add file to the open table!\n");
         return -1;
     }
 
@@ -494,14 +492,14 @@ int sfs_close(int fd)
 {
     if (!is_open_fd(fd))
     {
-        printf("[-] File with fd=%d is not open!\n", fd);
+        // printf("[-] File with fd=%d is not open!\n", fd);
         return -1;
     }
     else
     {
         open_table[fd].is_used = 0;
         strncpy(open_table[fd].filename, "", FILENAME_SIZE);
-        printf("[+] File with fd=%d was closed!\n", fd);
+        // printf("[+] File with fd=%d was closed!\n", fd);
     }
 
     return (0);
@@ -513,12 +511,12 @@ int sfs_getsize(int fd)
     {
         int fcb_index = open_table[fd].fcb_index;
         fcb_t fcb = read_fcb(fcb_index);
-        printf("[SIZE] size:: %ld\n", fcb.size);
+        // printf("[SIZE] size:: %ld\n", fcb.size);
         return fcb.size;
     }
     else
     {
-        printf("[-] File is not open, size: 0\n");
+        // printf("[-] File is not open, size: 0\n");
         return -1;
     }
 
@@ -538,21 +536,19 @@ int sfs_read(int fd, void *buf, int n)
 {
     if (fd < 0 || fd > MAX_OPEN_FILE)
     {
-        printf("[-] Invalid fd: %d\n", fd);
+        // printf("[-] Invalid fd: %d\n", fd);
         return -1;
     }
 
-    // if(!check_dir_exist())
-
     if (!is_open_fd(fd))
     {
-        printf("[-] File with fd=%d is not open!\n", fd);
+        // printf("[-] File with fd=%d is not open!\n", fd);
         return -1;
     }
 
     // if (open_table[fd].o_mode != MODE_READ)
     // {
-    //     printf("[-] File is not opened in read mode\n");
+    //     // printf("[-] File is not opened in read mode\n");
     //     return -1;
     // }
 
@@ -567,16 +563,16 @@ int sfs_read(int fd, void *buf, int n)
     lseek(vdisk_fd, fcb.i_node, SEEK_SET);
     if (read(vdisk_fd, data_blks, sizeof(int) * blk_count) == -1)
     {
-        printf("[SFS_READ ] Error while reading data blocks!\n");
+        // printf("[SFS_READ ] Error while reading data blocks!\n");
         return -1;
     }
 
-    // printf("---------- fd: %d, fcb_index: %d, inode: %d -------------\n", fd, fcb_index, fcb.i_node);
+    // // printf("---------- fd: %d, fcb_index: %d, inode: %d -------------\n", fd, fcb_index, fcb.i_node);
     // for (size_t i = 0; i < blk_count; i++)
     // {
-    //     printf(" %d ", data_blks[i]);
+    //     // printf(" %d ", data_blks[i]);
     // }
-    // printf("\n");
+    // // printf("\n");
 
     // Calculate number of data blocks to read for n bytes
     int full_blks = floor((double)n / BLOCKSIZE);
@@ -588,7 +584,7 @@ int sfs_read(int fd, void *buf, int n)
         lseek(vdisk_fd, data_blks[i], SEEK_SET);
         if (read(vdisk_fd, buf + start_pos, BLOCKSIZE) == -1)
         {
-            printf("[SFS_READ] Error while reading data block!\n");
+            // printf("[SFS_READ] Error while reading data block!\n");
             return -1;
         }
         start_pos += BLOCKSIZE;
@@ -597,11 +593,11 @@ int sfs_read(int fd, void *buf, int n)
     lseek(vdisk_fd, data_blks[blk_count - 1], SEEK_SET);
     if (read(vdisk_fd, buf + start_pos, last_portion) == -1)
     {
-        printf("[SFS_READ] Error while reading last data block!\n");
+        // printf("[SFS_READ] Error while reading last data block!\n");
         return -1;
     }
 
-    // printf("[READ] n: %d, read_bytes: %d, blk_count: %d, data_blks[0]: %d\n", n, size, blk_count, data_blks[0]);
+    // // printf("[READ] n: %d, read_bytes: %d, blk_count: %d, data_blks[0]: %d\n", n, size, blk_count, data_blks[0]);
     return (0);
 }
 
@@ -612,7 +608,7 @@ off_t find_inode()
     if (inode_offset == -1)
         return -1;
     return inode_offset;
-    printf("[SET INODE] New inode is: %ld\n", inode_offset);
+    // printf("[SET INODE] New inode is: %ld\n", inode_offset);
 }
 
 int add_data_blk(fcb_t *fcb, int blk_count)
@@ -630,7 +626,7 @@ int add_data_blk(fcb_t *fcb, int blk_count)
     lseek(vdisk_fd, fcb->i_node, SEEK_SET);
     if (read(vdisk_fd, curr_blks, BLOCKSIZE) == -1)
     {
-        printf("[ADD DATA BLK] Error while reading current data blocks!\n");
+        // printf("[ADD DATA BLK] Error while reading current data blocks!\n");
         return -1;
     }
 
@@ -639,7 +635,7 @@ int add_data_blk(fcb_t *fcb, int blk_count)
     lseek(vdisk_fd, fcb->i_node, SEEK_SET);
     if (write(vdisk_fd, curr_blks, BLOCKSIZE) == -1)
     {
-        printf("[ADD DATA BLK] Error while writing data block!\n");
+        // printf("[ADD DATA BLK] Error while writing data block!\n");
         return -1;
     }
 
@@ -650,19 +646,19 @@ int sfs_append(int fd, void *buf, int n)
 {
     if (fd < 0 || fd > MAX_OPEN_FILE)
     {
-        printf("[-] Invalid fd: %d\n", fd);
+        // printf("[-] Invalid fd: %d\n", fd);
         return -1;
     }
 
     if (!is_open_fd(fd))
     {
-        printf("[-] Cannot append, '%d' is not open!\n", fd);
+        // printf("[-] Cannot append, '%d' is not open!\n", fd);
         return -1;
     }
 
     if (open_table[fd].o_mode == MODE_READ)
     {
-        printf("[-] Cannot append, file is opened in read mode!\n");
+        // printf("[-] Cannot append, file is opened in read mode!\n");
         return -1;
     }
 
@@ -676,7 +672,7 @@ int sfs_append(int fd, void *buf, int n)
         off_t inode_off = find_inode();
         if (inode_off == -1)
         {
-            printf("[-] Cannot append, index node allocation failed!\n");
+            // printf("[-] Cannot append, index node allocation failed!\n");
             return -1;
         }
 
@@ -702,12 +698,12 @@ int sfs_append(int fd, void *buf, int n)
         // If cannot allocate more blocks(file size exceeds max 4MB size)
         if (exceeds_max)
         {
-            printf("[-] Cannot append %d bytes. Max Size: 4MB, Curr Size: %ld\n", n, fcb.size);
+            // printf("[-] Cannot append %d bytes. Max Size: 4MB, Curr Size: %ld\n", n, fcb.size);
             return -1;
         }
         if (add_data_blk(&fcb, blk_count) == -1)
         {
-            printf("[-] Failed to allocate new data block!\n");
+            // printf("[-] Failed to allocate new data block!\n");
             return -1;
         }
         else
@@ -716,7 +712,7 @@ int sfs_append(int fd, void *buf, int n)
         }
     }
 
-    // printf("[FCB] size: %ld, blocks: %d, inode: %d\n", fcb.size, fcb.data_blks_count, fcb.i_node);
+    // // printf("[FCB] size: %ld, blocks: %d, inode: %d\n", fcb.size, fcb.data_blks_count, fcb.i_node);
 
     // Read pointers to the data blocks
     int count = fcb.data_blks_count;
@@ -724,7 +720,7 @@ int sfs_append(int fd, void *buf, int n)
     lseek(vdisk_fd, (off_t)fcb.i_node, SEEK_SET);
     if (read(vdisk_fd, data_blks, sizeof(int) * count) == -1)
     {
-        printf("[SFS_APPEND] Error while reading data block!\n");
+        // printf("[SFS_APPEND] Error while reading data block!\n");
         return -1;
     }
 
@@ -742,14 +738,14 @@ int sfs_append(int fd, void *buf, int n)
     if (n <= free_space)
     {
         write_offset = data_blks[first_free_blk] + used_bytes;
-        // printf("size: %d, offset: %ld, data: %c\n", fcb->size, write_offset, (char *)buf);
+        // // printf("size: %d, offset: %ld, data: %c\n", fcb->size, write_offset, (char *)buf);
         lseek(vdisk_fd, write_offset, SEEK_SET);
         if (write(vdisk_fd, buf, n) == -1)
         {
-            printf("[SFS_APPEND] Error while to partially filled block!\n");
+            // printf("[SFS_APPEND] Error while to partially filled block!\n");
             return -1;
         }
-        // printf("[PARTIAL WRITE] Wrote: %d bytes --> at_blk: %d\n", n, data_blks[first_free_blk]);
+        // // printf("[PARTIAL WRITE] Wrote: %d bytes --> at_blk: %d\n", n, data_blks[first_free_blk]);
     }
     // Else write as much as available to the last block
     // write remaining into the newly allocated data blocks
@@ -759,7 +755,7 @@ int sfs_append(int fd, void *buf, int n)
         lseek(vdisk_fd, write_offset, SEEK_SET);
         if (write(vdisk_fd, buf, free_space) == -1)
         {
-            printf("[SFS_APPEND] Error while writing to partially filled block!\n");
+            // printf("[SFS_APPEND] Error while writing to partially filled block!\n");
             return -1;
         }
 
@@ -769,7 +765,7 @@ int sfs_append(int fd, void *buf, int n)
         // If data size is more than one BLOCKSIZE, find the
         // number of full blocks that can be filled with it.
         int blk_count = floor((double)rem_data / BLOCKSIZE);
-        // printf("[FULL BLOCK] rem_data: %d, Count: %d\n", rem_data, blk_count);
+        // // printf("[FULL BLOCK] rem_data: %d, Count: %d\n", rem_data, blk_count);
         int start = free_space;
         for (int i = 0; i < blk_count; i++)
         {
@@ -777,10 +773,10 @@ int sfs_append(int fd, void *buf, int n)
             lseek(vdisk_fd, write_offset, SEEK_SET);
             if (write(vdisk_fd, buf + start, BLOCKSIZE) == -1)
             {
-                printf("[SFS_APPEND] Error while writing full block!\n");
+                // printf("[SFS_APPEND] Error while writing full block!\n");
                 return -1;
             }
-            // printf("[FULL WRITE] Wrote: %d bytes --> blk: %ld\n", BLOCKSIZE, write_offset);
+            // // printf("[FULL WRITE] Wrote: %d bytes --> blk: %ld\n", BLOCKSIZE, write_offset);
             start += BLOCKSIZE;
         }
 
@@ -788,10 +784,10 @@ int sfs_append(int fd, void *buf, int n)
         write_offset = data_blks[count - 1];
         lseek(vdisk_fd, write_offset, SEEK_SET);
         int last_portion = rem_data - blk_count * BLOCKSIZE;
-        // printf("[LAST PORTION] wrote: %d, blk_at: %d\n", last_portion, data_blks[count - 1]);
+        // // printf("[LAST PORTION] wrote: %d, blk_at: %d\n", last_portion, data_blks[count - 1]);
         if (write(vdisk_fd, buf + start, last_portion) == -1)
         {
-            printf("[SFS_APPEND] Error while writing last portion!\n");
+            // printf("[SFS_APPEND] Error while writing last portion!\n");
             return -1;
         }
     }
@@ -805,7 +801,7 @@ int sfs_append(int fd, void *buf, int n)
     lseek(vdisk_fd, fcb_offset, SEEK_SET);
     if (write(vdisk_fd, &fcb, FCB_SIZE) == -1)
     {
-        printf("[SFS_APPEND] Error while writing back FCB block!\n");
+        // printf("[SFS_APPEND] Error while writing back FCB block!\n");
         return -1;
     }
     return (0);
@@ -816,7 +812,7 @@ int sfs_append(int fd, void *buf, int n)
 int reset_bmap(off_t blk_off, off_t bmap_off, off_t blks_start, int blk_size)
 {
     int index = floor((blk_off - blks_start) / blk_size);
-    // printf("[BEFORE DELETION] blk: %ld, index ====> %d\n", blk_off, index);
+    // // printf("[BEFORE DELETION] blk: %ld, index ====> %d\n", blk_off, index);
     int bmap_index = index / sizeof(int);
     int *bmap = malloc(sizeof(int));
     lseek(vdisk_fd, bmap_off + bmap_index, SEEK_SET);
@@ -877,7 +873,6 @@ int sfs_delete(char *filename)
     // Close file if is open
     if (is_open_name(filename))
     {
-        d_entry dir;
         for (size_t i = 0; i < MAX_OPEN_FILE; i++)
         {
 
@@ -907,7 +902,7 @@ int sfs_delete(char *filename)
 
     if (!found)
     {
-        printf("[DELETE] A file with '%s' name not found!\n", filename);
+        // printf("[DELETE] A file with '%s' name not found!\n", filename);
         return -1;
     }
 
@@ -927,6 +922,6 @@ int sfs_delete(char *filename)
     remove_fcb(dir.fcb_index);
     remove_dir(dir_index);
 
-    printf("[DELETE] File '%s' was successfuly deleted!\n", filename);
+    // printf("[DELETE] File '%s' was successfuly deleted!\n", filename);
     return (0);
 }
